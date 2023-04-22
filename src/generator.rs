@@ -3,16 +3,13 @@ use rand::{rngs::OsRng, RngCore};
 use crate::{config::Config, alphabet::Alphabet};
 
 /// Generate password using provided configuration
-pub fn generate(cfg: &Config, a: Option<Alphabet>) -> Result<String> {
+pub fn generate(cfg: &Config, a: Alphabet) -> Result<String> {
+    if a.len() == 0 {
+        bail!("no alphabet provided");
+    }
+
     let mut password: Vec<char> = Vec::with_capacity(cfg.len);
-    let alphabet = if a.is_some() {
-        a.unwrap().shuffled()
-    } else {
-        if cfg.alphabet.len() == 0 {
-            bail!("no alphabet or alphabet configuration provided");
-        }
-        cfg.alphabet.chars().collect()
-    };
+    let alphabet = a.shuffle();
 
     for n in 0usize..cfg.len {
         let mut access_index = OsRng.next_u32() as usize % alphabet.len();

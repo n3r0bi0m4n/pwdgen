@@ -1,5 +1,4 @@
 use rand::seq::SliceRandom;
-
 use crate::config::Config;
 
 // Keep order
@@ -11,132 +10,71 @@ pub static NUM_SYMBOLS: &str = "!@#$%^&*";
 pub static BRACES: &str = "()[]{}<>";
 pub static OTHER_SYMBOLS: &str = "+=;\\|/?.,";
 
-/// Alphabet configuration bitfield
-pub struct AlphabetConfig(u8);
-
-impl AlphabetConfig {
-    pub fn new(cfg: &Config) -> Self {
-        let mut v = 0u8;
-        
-        if cfg.alphabet.len() > 0 {
-            return Self(0);
-        }
-
-        if cfg.use_all {
-            return Self(127);
-        }
-        
-        if cfg.use_small_alpha {
-            v += 1 << 0;
-        }
-
-        if cfg.use_big_alpha {
-            v += 1 << 1;
-        }
-
-        if cfg.use_numeric {
-            v += 1 << 2;
-        }
-
-        if cfg.use_dashes {
-            v += 1 << 3;
-        }
-
-        if cfg.use_num_symbols {
-            v += 1 << 4;
-        }
-
-        if cfg.use_braces {
-            v += 1 << 5;
-        }
-
-        if cfg.use_other_symbols {
-            v += 1 << 6;
-        }
-
-        Self(v)
-    }
-
-    fn chk(&self, index: u8) -> bool {
-        assert!(index < 8);
-        (&self.0 & (1 << index)) != 0
-    }
-
-    pub fn is_small_alpha(&self) -> bool {
-        self.chk(0)
-    }
-
-    pub fn is_big_alpha(&self) -> bool {
-        self.chk(1)
-    }
-
-    pub fn is_numeric(&self) -> bool {
-        self.chk(2)
-    }
-
-    pub fn is_dashes(&self) -> bool {
-        self.chk(3)
-    }
-
-    pub fn is_num_symbols(&self) -> bool {
-        self.chk(4)
-    }
-
-    pub fn is_braces(&self) -> bool {
-        self.chk(5)
-    }
-
-    pub fn is_other_symbols(&self) -> bool {
-        self.chk(6)
-    }
-}
-
 /// Alphabet used to generate passwords
 #[derive(Debug)]
-pub struct Alphabet(String);
+pub struct Alphabet(Vec<char>);
 
 impl Alphabet {
-    pub fn new(config: &AlphabetConfig) -> Option<Self> {
-        if config.0 == 0 {
-            return None
+    pub fn new(config: &Config) -> Self {
+        if !config.alphabet.is_empty() {
+            return Self::from(&config.alphabet);
         }
 
         let mut inner = String::new();
 
-        if config.is_small_alpha() {
+        if config.use_all || config.use_small_alpha {
             inner.push_str(SMALL_ALPHA);
         }
 
-        if config.is_big_alpha() {
+        if config.use_all || config.use_big_alpha {
             inner.push_str(BIG_ALPHA);
         }
 
-        if config.is_numeric() {
+        if config.use_all || config.use_numeric {
             inner.push_str(NUMERIC);
         }
 
-        if config.is_dashes() {
+        if config.use_all || config.use_dashes {
             inner.push_str(DASHES);
         }
 
-        if config.is_num_symbols() {
+        if config.use_all || config.use_num_symbols {
             inner.push_str(NUM_SYMBOLS);
         }
 
-        if config.is_braces() {
+        if config.use_all || config.use_braces {
             inner.push_str(BRACES);
         }
 
-        if config.is_other_symbols() {
+        if config.use_all || config.use_other_symbols {
             inner.push_str(OTHER_SYMBOLS);
         }
 
-        Some(Self(inner))
+        Self::from(&inner)
     }
 
-    pub fn shuffled(&self) -> Vec<char> {
-        let mut chars: Vec<char> = self.0.chars().into_iter().collect();
-        chars.shuffle(&mut rand::rngs::OsRng);
-        chars
+    pub fn shuffle(mut self) -> Self {
+        self.0.shuffle(&mut rand::rngs::OsRng);
+        Self(self.0)
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&char> {
+        self.0.get(index)
+    }
+}
+
+impl FromIterator<char> for Alphabet {
+    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+        Self(iter.into_iter().collect::<Vec<char>>())
+    }
+}
+
+impl From<&String> for Alphabet {
+    fn from(value: &String) -> Self {
+        Self(value.chars().collect())
     }
 }
